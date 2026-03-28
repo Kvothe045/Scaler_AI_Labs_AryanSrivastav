@@ -1,40 +1,43 @@
 // frontend/lib/api.ts
 
 /**
- * Determines the correct base URL based on the execution environment.
- * * - SERVER SIDE (SSR/Server Components): Bypasses the proxy and talks directly to the VM.
- * (Servers do not have mixed content restrictions).
- * - CLIENT SIDE (Browser): Uses a relative path ('') to trigger the Next.js rewrites,
- * bypassing browser HTTPS -> HTTP Mixed Content errors.
+ * Environment-Aware Base URL Configuration
+ * - SERVER (SSR): Connects directly to the Azure VM to reduce latency.
+ * - CLIENT (Browser): Uses an empty string to trigger the Vercel relative proxy,
+ * preventing HTTPS -> HTTP Mixed Content crashes.
  */
 const IS_SERVER = typeof window === 'undefined';
-const BASE = IS_SERVER 
-  ? (process.env.INTERNAL_API_URL || 'http://20.193.130.195:8123') 
-  : (process.env.NEXT_PUBLIC_API_URL || '');
+const BASE = IS_SERVER ? 'http://20.193.130.195:8123' : '';
 
 /**
- * Core request utility for standardizing fetch calls and error handling.
+ * Core Request Wrapper
  */
 async function req(method: string, path: string, body?: any) {
-  const token = !IS_SERVER ? localStorage.getItem('token') : null;
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   
-  const res = await fetch(`${BASE}${path}`, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-  });
+  try {
+    const res = await fetch(`${BASE}${path}`, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    });
 
-  if (!res.ok) {
-    const errText = await res.text();
-    // Provide a detailed error for debugging, fallback to status text
-    throw new Error(errText || `HTTP Error: ${res.status} ${res.statusText}`);
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(err || res.statusText);
+    }
+    
+    const text = await res.text();
+    return text ? JSON.parse(text) : null;
+    
+  } catch (error) {
+    // Logging the error ensures we don't swallow silent failures in production
+    console.error(`[API Client] ${method} ${path} failed:`, error);
+    throw error;
   }
-
-  const text = await res.text();
-  return text ? JSON.parse(text) : null;
 }
 
 // ── Auth ──────────────────────────────────────────────
@@ -104,22 +107,28 @@ export const getAttachments = (cardId: number) =>
   req('GET', `/api/v1/cards/${cardId}/attachments`);
 
 /**
- * Handles file uploads. Uses standard FormData to transmit binary files to the backend.
+ * Multi-part Form Data Request for File Uploads
  */
 export const uploadAttachment = async (cardId: number, file: File) => {
-  const token = !IS_SERVER ? localStorage.getItem('token') : null;
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const form = new FormData();
   form.append('file', file);
   
-  const res = await fetch(`${BASE}/api/v1/cards/${cardId}/attachments`, {
-    method: 'POST',
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    body: form,
-  });
-  
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(errText || `Upload Failed: ${res.status}`);
+  try {
+    // Uses the same BASE logic to route through the Vercel proxy securely
+    const res = await fetch(`${BASE}/api/v1/cards/${cardId}/attachments`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+    
+    if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText || `Upload Failed: ${res.status}`);
+    }
+    return await res.json();
+  } catch (error) {
+    console.error(`[API Client] Attachment upload failed:`, error);
+    throw error;
   }
-  return res.json();
 };
