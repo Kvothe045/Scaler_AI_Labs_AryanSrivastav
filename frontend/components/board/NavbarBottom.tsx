@@ -6,7 +6,7 @@ interface Props {
   onSwitchBoardsClick: () => void;
 }
 
-export default function BottomNav({ onSwitchBoardsClick }: Props) {
+export default function NavbarBottom({ onSwitchBoardsClick }: Props) {
   return (
     <div className="fixed bottom-6 left-[calc(50%+130px)] -translate-x-1/2 z-40">
       <div className="bg-[#282e33] border border-white/10 shadow-2xl rounded-xl flex items-center p-1.5 gap-1 backdrop-blur-md">

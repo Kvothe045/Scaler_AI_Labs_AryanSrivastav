@@ -9,7 +9,8 @@ import type { Card, List } from '../../../types';
 import Sidebar      from '../../../components/board/Sidebar';
 import Header       from '../../../components/board/Header';
 import BoardView    from '../../../components/board/BoardView';
-import BottomNav    from '../../../components/board/BottomNav';
+// import NavbarBottom    from '../../../components/board/NavbarBottom';
+import NavbarBottom from '@/components/board/NavbarBottom';
 import BoardSwitcher from '../../../components/board/BoardSwitcher';
 import BoardMenu    from '../../../components/board/BoardMenu';
 import CardModal    from '../../../components/card/CardModal';
@@ -134,7 +135,7 @@ export default function BoardPage() {
           <BoardView onCardClick={(card, list) => setSelectedCard({ card, list })} />
 
           {/* Trello-style bottom tab bar: Inbox | Planner | Board | Switch boards */}
-          <BottomNav onSwitchBoardsClick={() => setIsSwitcherOpen(true)} />
+          <NavbarBottom onSwitchBoardsClick={() => setIsSwitcherOpen(true)} />
         </div>
       </div>
 
