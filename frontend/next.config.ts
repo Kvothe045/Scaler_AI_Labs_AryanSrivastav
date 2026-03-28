@@ -2,16 +2,16 @@ import type { NextConfig } from "next";
 
 /**
  * Next.js Production Configuration
- * Configures Vercel to securely proxy API requests to the Azure VM,
- * bypassing all browser HTTP/HTTPS Mixed Content restrictions.
+ * - trailingSlash: TRUE. Prevents Vercel from stripping slashes, ensuring 
+ * the backend doesn't issue broken 307 Redirects that drop the port.
+ * - rewrites(): Securely proxies client requests to the Azure VM.
  */
 const nextConfig: NextConfig = {
+  trailingSlash: true, 
   async rewrites() {
     return [
       {
-        // Intercept any client request starting with /api/v1/
         source: "/api/v1/:path*",
-        // Securely forward it to your Azure VM from the Vercel backend
         destination: "http://20.193.130.195:8123/api/v1/:path*",
       },
     ];
