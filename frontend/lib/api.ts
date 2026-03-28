@@ -5,7 +5,7 @@
  * - SERVER: Uses the absolute VM URL with the port.
  * - CLIENT: Strictly uses relative path '' to trigger the Vercel Proxy.
  */
-const BASE = typeof window === 'undefined' ? 'http://20.193.130.195:8123' : '';
+const BASE = 'https://scalarapi.duckdns.org:8443';
 
 async function req(method: string, path: string, body?: any) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
