@@ -1,8 +1,23 @@
 // frontend/lib/api.ts
-const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8123';
 
+/**
+ * Determines the correct base URL based on the execution environment.
+ * * - SERVER SIDE (SSR/Server Components): Bypasses the proxy and talks directly to the VM.
+ * (Servers do not have mixed content restrictions).
+ * - CLIENT SIDE (Browser): Uses a relative path ('') to trigger the Next.js rewrites,
+ * bypassing browser HTTPS -> HTTP Mixed Content errors.
+ */
+const IS_SERVER = typeof window === 'undefined';
+const BASE = IS_SERVER 
+  ? (process.env.INTERNAL_API_URL || 'http://20.193.130.195:8123') 
+  : (process.env.NEXT_PUBLIC_API_URL || '');
+
+/**
+ * Core request utility for standardizing fetch calls and error handling.
+ */
 async function req(method: string, path: string, body?: any) {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const token = !IS_SERVER ? localStorage.getItem('token') : null;
+  
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers: {
@@ -11,10 +26,13 @@ async function req(method: string, path: string, body?: any) {
     },
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
+
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(err || res.statusText);
+    const errText = await res.text();
+    // Provide a detailed error for debugging, fallback to status text
+    throw new Error(errText || `HTTP Error: ${res.status} ${res.statusText}`);
   }
+
   const text = await res.text();
   return text ? JSON.parse(text) : null;
 }
@@ -85,15 +103,23 @@ export const addComment = (cardId: number, data: any) =>
 export const getAttachments = (cardId: number) =>
   req('GET', `/api/v1/cards/${cardId}/attachments`);
 
+/**
+ * Handles file uploads. Uses standard FormData to transmit binary files to the backend.
+ */
 export const uploadAttachment = async (cardId: number, file: File) => {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const token = !IS_SERVER ? localStorage.getItem('token') : null;
   const form = new FormData();
   form.append('file', file);
+  
   const res = await fetch(`${BASE}/api/v1/cards/${cardId}/attachments`, {
     method: 'POST',
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: form,
   });
-  if (!res.ok) throw new Error(await res.text());
+  
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(errText || `Upload Failed: ${res.status}`);
+  }
   return res.json();
 };
