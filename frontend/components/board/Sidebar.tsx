@@ -1,6 +1,6 @@
 'use client';
 
-import { Inbox, ChevronDown, Chrome } from 'lucide-react';
+import { Inbox, ChevronDown, Globe } from 'lucide-react';
 
 export default function Sidebar() {
   return (
@@ -31,11 +31,11 @@ export default function Sidebar() {
 
       <div className="flex-1" />
 
-      {/* Bottom Chrome Extension Ad (Matching your screenshot) */}
+      {/* Bottom Globe Extension Ad (Matching your screenshot) */}
       <div className="p-4">
         <button className="w-full flex items-center justify-between bg-white/5 hover:bg-white/10 p-2 rounded-lg text-xs font-medium text-[#b6c2cf] transition-colors border border-white/5">
           <div className="flex items-center gap-2">
-            <Chrome size={14} className="text-yellow-500" />
+            <Globe size={14} className="text-yellow-500" />
             <span className="text-[10px] bg-blue-600/20 text-blue-400 px-1 rounded font-bold">NEW</span>
             Consolidate your to-dos
           </div>
