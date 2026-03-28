@@ -1,17 +1,12 @@
 // frontend/lib/api.ts
 
 /**
- * Environment-Aware Base URL Configuration
- * - SERVER (SSR): Connects directly to the Azure VM to reduce latency.
- * - CLIENT (Browser): Uses an empty string to trigger the Vercel relative proxy,
- * preventing HTTPS -> HTTP Mixed Content crashes.
+ * Hardcoded Environment Check to prevent Vercel Env Var overriding.
+ * - SERVER: Uses the absolute VM URL with the port.
+ * - CLIENT: Strictly uses relative path '' to trigger the Vercel Proxy.
  */
-const IS_SERVER = typeof window === 'undefined';
-const BASE = IS_SERVER ? 'http://20.193.130.195:8123' : '';
+const BASE = typeof window === 'undefined' ? 'http://20.193.130.195:8123' : '';
 
-/**
- * Core Request Wrapper
- */
 async function req(method: string, path: string, body?: any) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   
@@ -34,7 +29,6 @@ async function req(method: string, path: string, body?: any) {
     return text ? JSON.parse(text) : null;
     
   } catch (error) {
-    // Logging the error ensures we don't swallow silent failures in production
     console.error(`[API Client] ${method} ${path} failed:`, error);
     throw error;
   }
@@ -106,16 +100,12 @@ export const addComment = (cardId: number, data: any) =>
 export const getAttachments = (cardId: number) =>
   req('GET', `/api/v1/cards/${cardId}/attachments`);
 
-/**
- * Multi-part Form Data Request for File Uploads
- */
 export const uploadAttachment = async (cardId: number, file: File) => {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const form = new FormData();
   form.append('file', file);
   
   try {
-    // Uses the same BASE logic to route through the Vercel proxy securely
     const res = await fetch(`${BASE}/api/v1/cards/${cardId}/attachments`, {
       method: 'POST',
       headers: token ? { Authorization: `Bearer ${token}` } : {},
