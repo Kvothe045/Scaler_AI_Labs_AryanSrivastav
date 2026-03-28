@@ -1,0 +1,41 @@
+services:
+  # 1. The PostgreSQL Database Container
+  trello-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: trello_user
+      POSTGRES_PASSWORD: trello_password
+      POSTGRES_DB: trellodb
+    ports:
+      - "5433:5432"
+    volumes:
+      - trello_postgres_data:/var/lib/postgresql/data
+    restart: always
+    # NEW: Check if Postgres is actually ready
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trello_user -d trellodb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. The FastAPI Backend Container
+  trello-api:
+    build: .
+    ports:
+      # - "8090:8000"
+      - "0.0.0.0:8123:8000"
+    environment:
+      - DATABASE_URL=postgresql://trello_user:trello_password@trello-db:5432/trellodb
+    volumes:
+      - ./app:/app/app 
+      - trello_uploads:/app/uploads
+    command: python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+
+      trello-db:
+        condition: service_healthy
+    restart: always
+
+volumes:
+  trello_postgres_data:
+  trello_uploads:
