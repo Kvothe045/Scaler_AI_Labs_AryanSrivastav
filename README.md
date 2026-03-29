@@ -4,6 +4,7 @@
 
 **Live Frontend:** [scalartrello.vercel.app](https://scalartrello.vercel.app)
 **Backend API:** `https://scalarapi.duckdns.org:8443`
+**API DOCS:** `https://scalarapi.duckdns.org:8443/docs`
 
 ---
 
@@ -74,7 +75,7 @@ This project is a full-stack clone of Trello built as part of Scaler AI Labs. It
               │  └────────────┬───────────────┘   │
               │               │                   │
               │  ┌────────────▼───────────────┐   │
-              │  │  SQLite / PostgreSQL DB    │   │
+              │  │      PostgreSQL DB         │
               │  └────────────────────────────┘   │
               └───────────────────────────────────┘
 ```
@@ -392,14 +393,9 @@ Create a `.env` file in the `backend/` directory:
 
 ```env
 # Database URL — SQLite for dev, PostgreSQL for prod
-DATABASE_URL=sqlite:///./app.db
-# or for PostgreSQL:
+DATABASE_URLfor PostgreSQL:
 # DATABASE_URL=postgresql://user:password@localhost:5432/trello_db
 
-# JWT Secret
-SECRET_KEY=your-super-secret-key-change-this
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=10080
 
 # CORS — set to your Vercel frontend URL
 ALLOWED_ORIGINS=https://scalartrello.vercel.app,http://localhost:3000
@@ -496,7 +492,7 @@ services:
       - "8000:8000"
     volumes:
       - ./app/uploads:/app/uploads   # persist uploaded files
-      - ./app.db:/app/app.db         # persist SQLite DB (if used)
+      - ./app.db:/app/app.db         
     env_file:
       - .env
     restart: unless-stopped
