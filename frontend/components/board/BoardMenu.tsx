@@ -1,35 +1,43 @@
 // frontend/components/board/BoardMenu.tsx
 'use client';
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { useStore } from '../../store';
 import * as api from '../../lib/api';
+import { 
+  X, ChevronLeft, Users, Palette, Tag, Plus, 
+  Pencil, Trash2, Check, ChevronRight, ChevronDown
+} from 'lucide-react';
 
-const BG_COLORS = [
-  { color: '#0052cc', label: 'Ocean' },
-  { color: '#00875a', label: 'Green' },
-  { color: '#ff5630', label: 'Coral' },
-  { color: '#ff991f', label: 'Peach' },
-  { color: '#6554c0', label: 'Purple' },
-  { color: '#00b8d9', label: 'Sky' },
-  { color: '#403294', label: 'Indigo' },
-  { color: '#e6225e', label: 'Pink' },
-  { color: '#172b4d', label: 'Navy' },
-  { color: '#344563', label: 'Slate' },
-  { color: '#1d2125', label: 'Midnight' },
-  { color: '#0747a6', label: 'Royal' },
-  { color: '#006644', label: 'Forest' },
-  { color: '#bf2600', label: 'Crimson' },
-  { color: '#974f0c', label: 'Amber' },
+// Enhanced Backgrounds including Image Gradients
+const BG_OPTIONS = [
+  // Gradients (Images)
+  { type: 'image', value: 'https://images.unsplash.com/photo-1557682224-5b8590cd9ec5?auto=format&fit=crop&q=80&w=400', label: 'Dark Blue Gradient', icon: '🫧' },
+  { type: 'image', value: 'https://images.unsplash.com/photo-1557683316-973673baf926?auto=format&fit=crop&q=80&w=400', label: 'Light Blue Gradient', icon: '❄️' },
+  { type: 'image', value: 'https://images.unsplash.com/photo-1557682250-33bd709cbe85?auto=format&fit=crop&q=80&w=400', label: 'Ocean Gradient', icon: '🌊' },
+  { type: 'image', value: 'https://images.unsplash.com/photo-1557683304-673a23048d34?auto=format&fit=crop&q=80&w=400', label: 'Purple Gradient', icon: '🔮' },
+  { type: 'image', value: 'https://images.unsplash.com/photo-1557682260-96773eb01377?auto=format&fit=crop&q=80&w=400', label: 'Rainbow Gradient', icon: '🌈' },
+  { type: 'image', value: 'https://images.unsplash.com/photo-1557682268-e3955ed5d83f?auto=format&fit=crop&q=80&w=400', label: 'Orange Gradient', icon: '🍑' },
+  { type: 'image', value: 'https://images.unsplash.com/photo-1557683311-eac922347aa1?auto=format&fit=crop&q=80&w=400', label: 'Pink Gradient', icon: '🌸' },
+  { type: 'image', value: 'https://images.unsplash.com/photo-1557682257-2f9c37a3a5f3?auto=format&fit=crop&q=80&w=400', label: 'Teal Gradient', icon: '🌍' },
+  { type: 'image', value: 'https://images.unsplash.com/photo-1557682233-43e671455dfa?auto=format&fit=crop&q=80&w=400', label: 'Slate Gradient', icon: '👽' },
+  { type: 'image', value: 'https://images.unsplash.com/photo-1557682264-16e0b7405e3f?auto=format&fit=crop&q=80&w=400', label: 'Crimson Gradient', icon: '🌋' },
+  // Solid Colors
+  { type: 'color', value: '#0052cc', label: 'Ocean' },
+  { type: 'color', value: '#00875a', label: 'Green' },
+  { type: 'color', value: '#ff5630', label: 'Coral' },
+  { type: 'color', value: '#ff991f', label: 'Peach' },
+  { type: 'color', value: '#6554c0', label: 'Purple' },
+  { type: 'color', value: '#00b8d9', label: 'Sky' },
+  { type: 'color', value: '#403294', label: 'Indigo' },
+  { type: 'color', value: '#e6225e', label: 'Pink' },
+  { type: 'color', value: '#172b4d', label: 'Navy' },
+  { type: 'color', value: '#344563', label: 'Slate' },
 ];
 
-// Unsplash-style background photos (using picsum for demo — replace with real Unsplash API in production)
-const BG_PHOTOS = [
-  { url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80', thumb: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=160&q=60', label: 'Mountains' },
-  { url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80', thumb: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=160&q=60', label: 'Beach' },
-  { url: 'https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?w=800&q=80', thumb: 'https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?w=160&q=60', label: 'Puppy' },
-  { url: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&q=80', thumb: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=160&q=60', label: 'Night Sky' },
-  { url: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=800&q=80', thumb: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=160&q=60', label: 'Forest' },
-  { url: 'https://images.unsplash.com/photo-1495616811223-4d98c6e9c869?w=800&q=80', thumb: 'https://images.unsplash.com/photo-1495616811223-4d98c6e9c869?w=160&q=60', label: 'Architecture' },
+const LABEL_COLORS = [
+  '#4bce97', '#f5cd47', '#fea362', '#f87168', '#9f8fef',
+  '#579dff', '#60c6d2', '#94c748', '#e774bb', '#8590a2',
 ];
 
 interface Props {
@@ -40,38 +48,54 @@ type MenuView = 'main' | 'labels' | 'members' | 'background' | 'create-label' | 
 
 export default function BoardMenu({ onClose }: Props) {
   const store = useStore() as any;
+  // Use memberships for accurate member resolution based on recent backend updates
   const { boardState, labels, users, fetchLabels, activeBoardId } = store;
   const refreshBoard = typeof store.refreshBoard === 'function' ? store.refreshBoard : async () => {};
 
   const [view, setView] = useState<MenuView>('main');
-  const [bgTab, setBgTab] = useState<'photos' | 'colors'>('photos');
   const [editingLabel, setEditingLabel] = useState<{ id?: number; name: string; color_code: string } | null>(null);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('editor');
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleBgChange = async (value: string, type: 'color' | 'image') => {
+  // Close on Escape key
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [onClose]);
+
+  const handleBgChange = async (option: typeof BG_OPTIONS[0]) => {
     if (!activeBoardId) return;
-    const update = type === 'color'
-      ? { background_color: value, background_image: null }
-      : { background_image: value, background_color: null };
+    
+    // Check if user selected an image or a solid color
+    const update = option.type === 'image' 
+      ? { background_image: option.value, background_color: "transparent" }
+      : { background_color: option.value, background_image: "" };
+      
     await api.updateBoard(activeBoardId, update);
     await refreshBoard();
   };
 
   const handleSaveLabel = async () => {
     if (!editingLabel?.name || !editingLabel.color_code) return;
-    if (editingLabel.id) {
-      await api.updateLabel(editingLabel.id, { name: editingLabel.name, color_code: editingLabel.color_code });
-    } else {
-      await api.createLabel({ name: editingLabel.name, color_code: editingLabel.color_code });
+    setIsProcessing(true);
+    try {
+      if (editingLabel.id) {
+        await api.updateLabel(editingLabel.id, { name: editingLabel.name, color_code: editingLabel.color_code });
+      } else {
+        await api.createLabel({ name: editingLabel.name, color_code: editingLabel.color_code });
+      }
+      await fetchLabels();
+      setView('labels');
+      setEditingLabel(null);
+    } finally {
+      setIsProcessing(false);
     }
-    await fetchLabels();
-    setView('labels');
-    setEditingLabel(null);
   };
 
   const handleDeleteLabel = async (id: number) => {
-    if (!confirm('Delete this label?')) return;
+    if (!confirm('Are you sure you want to delete this label?')) return;
     await api.deleteLabel(id);
     await fetchLabels();
   };
@@ -80,391 +104,361 @@ export default function BoardMenu({ onClose }: Props) {
     if (!activeBoardId) return;
     const user = users?.find((u: any) => u.email === inviteEmail);
     if (!user) { alert('User not found with that email'); return; }
-    await api.addBoardMember(activeBoardId, { user_id: user.id, role: inviteRole });
-    setInviteEmail('');
-    await refreshBoard();
+    
+    setIsProcessing(true);
+    try {
+      await api.addBoardMember(activeBoardId, { user_id: user.id, role: inviteRole });
+      setInviteEmail('');
+      await refreshBoard();
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  const labelColors = [
-    '#4bce97', '#f5cd47', '#fea362', '#f87168', '#9f8fef',
-    '#579dff', '#60c6d2', '#94c748', '#e774bb', '#8590a2',
-  ];
-
   const viewTitle = {
-    main: boardState?.title || 'Menu',
+    main: 'Menu',
     labels: 'Labels',
-    members: 'Members',
-    background: 'Change background',
-    'create-label': 'Create label',
-    'edit-label': 'Edit label',
+    members: 'Board Members',
+    background: 'Change Background',
+    'create-label': 'Create Label',
+    'edit-label': 'Edit Label',
   }[view];
 
   return (
     <>
-      {/* Click-outside backdrop */}
-      <div
-        style={{ position: 'fixed', inset: 0, zIndex: 140 }}
-        onClick={onClose}
-      />
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap');
 
-      <div style={{
-        position: 'fixed', top: 44, right: 0, bottom: 0,
-        width: 340,
-        background: '#282e33',
-        borderLeft: '1px solid rgba(255,255,255,0.08)',
-        zIndex: 150,
-        display: 'flex',
-        flexDirection: 'column',
-        boxShadow: '-4px 0 16px rgba(0,0,0,0.3)',
-      }}>
-        {/* Header */}
+        .menu-backdrop {
+          position: fixed; inset: 0; z-index: 500;
+          background: rgba(0,0,0,0.5);
+          backdrop-filter: blur(3px);
+          animation: menuFadeIn 0.2s ease-out;
+        }
+
+        .menu-panel {
+          font-family: 'DM Sans', system-ui, sans-serif;
+          position: fixed; top: 0; right: 0; bottom: 0;
+          width: 360px; 
+          background: #282e33; 
+          border-left: 1px solid rgba(255,255,255,0.08);
+          z-index: 501;
+          display: flex; flex-direction: column;
+          box-shadow: -8px 0 32px rgba(0,0,0,0.5);
+          transform: translateX(0);
+          animation: menuSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @media (max-width: 600px) {
+          .menu-panel { width: 100vw; border-left: none; }
+        }
+
+        @keyframes menuFadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes menuSlideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
+        .menu-scroll::-webkit-scrollbar { width: 6px; }
+        .menu-scroll::-webkit-scrollbar-track { background: transparent; }
+        .menu-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+        .menu-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+
+        .menu-icon-btn {
+          width: 32px; height: 32px; border-radius: 8px;
+          background: transparent; border: none; cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          color: #9fadbc; transition: all 0.15s ease;
+        }
+        .menu-icon-btn:hover { background: rgba(255,255,255,0.1); color: #ffffff; }
+
+        .menu-nav-item {
+          display: flex; align-items: center; gap: 12px;
+          width: 100%; padding: 10px 12px; border-radius: 8px;
+          font-size: 14px; font-weight: 500; color: #b6c2cf;
+          background: transparent; border: none; cursor: pointer;
+          transition: background 0.15s, color 0.15s; text-align: left;
+        }
+        .menu-nav-item:hover { background: rgba(255,255,255,0.08); color: #ffffff; }
+
+        .menu-section-title {
+          font-size: 12px; font-weight: 700; color: #8c9bab;
+          text-transform: uppercase; letter-spacing: 0.04em;
+          margin-bottom: 8px; display: block;
+        }
+
+        .menu-input, .menu-select {
+          width: 100%; padding: 10px 12px;
+          background: #22272b; border: 2px solid rgba(255,255,255,0.08);
+          border-radius: 8px; color: #b6c2cf; font-size: 14px;
+          font-family: inherit; outline: none; transition: border-color 0.2s;
+          box-sizing: border-box;
+        }
+        .menu-input:focus, .menu-select:focus { border-color: #579dff; }
+        .menu-select { cursor: pointer; appearance: none; }
+        
+        .menu-btn-primary {
+          width: 100%; padding: 10px; border-radius: 8px;
+          font-size: 14px; font-weight: 600; background: #0c66e4;
+          color: white; border: none; cursor: pointer;
+          transition: background 0.15s;
+        }
+        .menu-btn-primary:hover:not(:disabled) { background: #0055cc; }
+        .menu-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .menu-btn-secondary {
+          padding: 10px 16px; border-radius: 8px;
+          font-size: 14px; font-weight: 600; background: rgba(255,255,255,0.08);
+          color: #b6c2cf; border: none; cursor: pointer; transition: background 0.15s;
+        }
+        .menu-btn-secondary:hover { background: rgba(255,255,255,0.15); color: white; }
+      `}</style>
+
+      <div className="menu-backdrop" onClick={onClose} />
+
+      <div className="menu-panel">
+        {/* ── HEADER ── */}
         <div style={{
-          display: 'flex', alignItems: 'center',
-          padding: '12px 8px 12px 12px',
-          borderBottom: '1px solid rgba(255,255,255,0.08)',
-          flexShrink: 0,
-          gap: 4,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.08)',
+          flexShrink: 0
         }}>
-          {view !== 'main' && (
-            <button
-              onClick={() => setView(view === 'create-label' || view === 'edit-label' ? 'labels' : 'main')}
-              style={{
-                width: 28, height: 28, borderRadius: 4, border: 'none',
-                background: 'transparent', color: '#9fadbc', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'background 0.1s',
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          {view !== 'main' ? (
+            <button 
+              onClick={() => setView(view === 'create-label' || view === 'edit-label' ? 'labels' : 'main')} 
+              className="menu-icon-btn"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="15 18 9 12 15 6"/>
-              </svg>
+              <ChevronLeft size={20} />
             </button>
-          )}
-          <span style={{
-            fontWeight: 600, fontSize: 14, color: '#b6c2cf',
-            flex: 1, textAlign: 'center',
-          }}>
+          ) : <div style={{ width: 32 }} />} 
+
+          <span style={{ fontWeight: 600, fontSize: 16, color: '#e5e9ea', flex: 1, textAlign: 'center' }}>
             {viewTitle}
           </span>
-          <button
-            onClick={onClose}
-            style={{
-              width: 28, height: 28, borderRadius: 4, border: 'none',
-              background: 'transparent', color: '#9fadbc', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 18, transition: 'background 0.1s',
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-          >
-            ×
+
+          <button onClick={onClose} className="menu-icon-btn">
+            <X size={20} />
           </button>
         </div>
 
-        {/* Content */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
+        {/* ── SCROLLABLE CONTENT ── */}
+        <div className="menu-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
 
           {/* ── MAIN VIEW ── */}
           {view === 'main' && (
-            <div>
-              {/* Board preview */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {boardState && (
-                <div style={{ padding: '8px 12px 16px', marginBottom: 4 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{
-                      width: 40, height: 32, borderRadius: 6,
-                      background: boardState.background_color || '#0052cc',
-                      backgroundImage: boardState.background_image ? `url(${boardState.background_image})` : undefined,
-                      backgroundSize: 'cover', backgroundPosition: 'center',
-                      flexShrink: 0,
-                    }} />
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: '#b6c2cf' }}>{boardState.title}</div>
-                      <div style={{ fontSize: 12, color: '#9fadbc' }}>{boardState.my_role}</div>
+                <div style={{ 
+                  display: 'flex', alignItems: 'center', gap: 14, 
+                  padding: '12px', background: 'rgba(255,255,255,0.03)', 
+                  borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)'
+                }}>
+                  <div style={{
+                    width: 56, height: 40, borderRadius: 6,
+                    background: boardState.background_color !== 'transparent' ? boardState.background_color : '#1d2125',
+                    backgroundImage: boardState.background_image ? `url(${boardState.background_image})` : undefined,
+                    backgroundSize: 'cover', backgroundPosition: 'center',
+                    boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.15)'
+                  }} />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontWeight: 600, fontSize: 15, color: '#e5e9ea', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {boardState.title}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#8c9bab', textTransform: 'capitalize', marginTop: 2 }}>
+                      {boardState.my_role} Workspace
                     </div>
                   </div>
                 </div>
               )}
 
-              <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', marginBottom: 4 }} />
+              <div style={{ height: 1, background: 'rgba(255,255,255,0.08)' }} />
 
-              {[
-                {
-                  label: 'About this board',
-                  sub: 'Add a description to your board',
-                  icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
-                  action: () => alert('Board description — coming soon!'),
-                },
-                {
-                  label: 'Members',
-                  icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
-                  action: () => setView('members'),
-                },
-                {
-                  label: 'Change background',
-                  icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>,
-                  action: () => setView('background'),
-                },
-                {
-                  label: 'Labels',
-                  icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>,
-                  action: () => setView('labels'),
-                },
-                {
-                  label: 'Activity',
-                  icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
-                  action: () => alert('Activity log — coming soon!'),
-                },
-              ].map(item => (
-                <MenuRow key={item.label} icon={item.icon} label={item.label} sub={(item as any).sub} onClick={item.action} />
-              ))}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <button onClick={() => setView('members')} className="menu-nav-item">
+                  <Users size={18} />
+                  <span style={{ flex: 1 }}>Members</span>
+                  <ChevronRight size={16} className="opacity-50" />
+                </button>
+                <button onClick={() => setView('background')} className="menu-nav-item">
+                  <Palette size={18} />
+                  <span style={{ flex: 1 }}>Change background</span>
+                  <ChevronRight size={16} className="opacity-50" />
+                </button>
+                <button onClick={() => setView('labels')} className="menu-nav-item">
+                  <Tag size={18} />
+                  <span style={{ flex: 1 }}>Labels</span>
+                  <ChevronRight size={16} className="opacity-50" />
+                </button>
+              </div>
             </div>
           )}
 
           {/* ── BACKGROUND VIEW ── */}
           {view === 'background' && (
-            <div>
-              {/* Tab switcher */}
-              <div style={{ display: 'flex', gap: 4, padding: '4px 4px 12px', borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: 12 }}>
-                {(['photos', 'colors'] as const).map(tab => (
-                  <button
-                    key={tab}
-                    onClick={() => setBgTab(tab)}
-                    style={{
-                      flex: 1, padding: '8px 0', borderRadius: 6, border: 'none', cursor: 'pointer',
-                      background: bgTab === tab ? 'rgba(255,255,255,0.15)' : 'transparent',
-                      color: bgTab === tab ? 'white' : '#9fadbc',
-                      fontWeight: bgTab === tab ? 600 : 400, fontSize: 14,
-                      transition: 'all 0.1s',
-                    }}
-                  >
-                    {tab === 'photos' ? '📷 Photos' : '🎨 Colors'}
-                  </button>
-                ))}
-              </div>
-
-              {bgTab === 'photos' && (
-                <>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                    {BG_PHOTOS.map(photo => (
-                      <button
-                        key={photo.url}
-                        onClick={() => handleBgChange(photo.url, 'image')}
-                        style={{
-                          height: 80, borderRadius: 8, overflow: 'hidden',
-                          backgroundImage: `url(${photo.thumb})`,
-                          backgroundSize: 'cover', backgroundPosition: 'center',
-                          border: 'none', cursor: 'pointer', position: 'relative',
-                          outline: boardState?.background_image === photo.url ? '3px solid white' : '3px solid transparent',
-                          transition: 'transform 0.1s, outline 0.1s',
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.03)'}
-                        onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-                        title={photo.label}
-                      >
-                        {boardState?.background_image === photo.url && (
-                          <div style={{
-                            position: 'absolute', inset: 0,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            background: 'rgba(0,0,0,0.3)',
-                          }}>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
-                              <polyline points="20 6 9 17 4 12"/>
-                            </svg>
-                          </div>
-                        )}
-                        <div style={{
-                          position: 'absolute', bottom: 0, left: 0, right: 0,
-                          padding: '4px 6px',
-                          background: 'linear-gradient(transparent, rgba(0,0,0,0.6))',
-                          fontSize: 11, color: 'white', fontWeight: 500,
-                          textAlign: 'left',
-                        }}>
-                          {photo.label}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Custom upload option */}
-                  <div style={{ marginTop: 8 }}>
-                    <div style={{ fontSize: 12, color: '#9fadbc', marginBottom: 6, fontWeight: 600 }}>Custom</div>
-                    <button style={{
-                      width: '100%', height: 64, borderRadius: 8,
-                      background: 'rgba(255,255,255,0.06)', border: '2px dashed rgba(255,255,255,0.2)',
-                      color: '#9fadbc', fontSize: 14, cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                      transition: 'background 0.1s, border-color 0.1s',
-                    }}
-                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.4)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'; }}
-                      onClick={() => alert('Custom upload — coming soon!')}
-                    >
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                      </svg>
-                      Upload a photo
-                    </button>
-                  </div>
-                </>
-              )}
-
-              {bgTab === 'colors' && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                  {BG_COLORS.map(({ color, label }) => (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              
+              {/* Image Gradients Section */}
+              <div>
+                <span className="menu-section-title">Gradients</span>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+                  {BG_OPTIONS.filter(opt => opt.type === 'image').map((opt) => (
                     <button
-                      key={color}
-                      onClick={() => handleBgChange(color, 'color')}
-                      title={label}
+                      key={opt.value}
+                      onClick={() => handleBgChange(opt)}
+                      title={opt.label}
                       style={{
-                        height: 64, borderRadius: 8, background: color,
+                        height: 72, borderRadius: 8, 
+                        backgroundImage: `url(${opt.value})`,
+                        backgroundSize: 'cover', backgroundPosition: 'center',
                         border: 'none', cursor: 'pointer', position: 'relative',
-                        outline: boardState?.background_color === color ? '3px solid white' : '3px solid transparent',
-                        transition: 'transform 0.1s, outline 0.1s',
+                        outline: boardState?.background_image === opt.value ? '3px solid #579dff' : '3px solid transparent',
+                        outlineOffset: 2, transition: 'transform 0.15s, outline 0.15s',
+                        boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.1)'
                       }}
-                      onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.04)'}
+                      onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
                       onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
                     >
-                      {boardState?.background_color === color && (
-                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
-                            <polyline points="20 6 9 17 4 12"/>
-                          </svg>
+                      <span style={{ position: 'absolute', bottom: 6, left: 8, fontSize: 16 }}>{opt.icon}</span>
+                      {boardState?.background_image === opt.value && (
+                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.2)', borderRadius: 8 }}>
+                          <Check size={24} color="white" strokeWidth={3} />
                         </div>
                       )}
                     </button>
                   ))}
                 </div>
-              )}
+              </div>
+
+              <div style={{ height: 1, background: 'rgba(255,255,255,0.08)' }} />
+
+              {/* Solid Colors Section */}
+              <div>
+                <span className="menu-section-title">Solid Colors</span>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                  {BG_OPTIONS.filter(opt => opt.type === 'color').map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => handleBgChange(opt)}
+                      title={opt.label}
+                      style={{
+                        aspectRatio: '1.2', borderRadius: 8, background: opt.value,
+                        border: 'none', cursor: 'pointer', position: 'relative',
+                        outline: boardState?.background_color === opt.value ? '3px solid #579dff' : '3px solid transparent',
+                        outlineOffset: 2, transition: 'transform 0.15s, outline 0.15s',
+                        boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.1)'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                      onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                    >
+                      {boardState?.background_color === opt.value && (
+                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Check size={20} color="white" strokeWidth={3} />
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
           {/* ── LABELS VIEW ── */}
           {view === 'labels' && (
-            <div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <button
-                onClick={() => { setEditingLabel({ name: '', color_code: labelColors[0] }); setView('create-label'); }}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  width: '100%', padding: '8px 12px', borderRadius: 6,
-                  marginBottom: 12, background: 'rgba(255,255,255,0.08)',
-                  fontSize: 14, color: '#b6c2cf', border: 'none', cursor: 'pointer',
-                  fontWeight: 500, transition: 'background 0.1s',
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                onClick={() => { setEditingLabel({ name: '', color_code: LABEL_COLORS[0] }); setView('create-label'); }}
+                className="menu-btn-secondary"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%' }}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <line x1="12" y1="5" x2="12" y2="19"/>
-                  <line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-                Create a new label
+                <Plus size={16} /> Create a new label
               </button>
 
-              {labels?.map((l: any) => (
-                <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                  <div style={{
-                    flex: 1, height: 36, borderRadius: 6, background: l.color_code,
-                    display: 'flex', alignItems: 'center', paddingLeft: 12, cursor: 'pointer',
-                  }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: 'white' }}>{l.name}</span>
-                  </div>
-                  <button
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {labels?.length === 0 && (
+                  <div style={{ textAlign: 'center', color: '#8c9bab', fontSize: 13, marginTop: 16 }}>No labels found.</div>
+                )}
+                {labels?.map((l: any) => (
+                  <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{
+                      flex: 1, height: 36, borderRadius: 6, background: l.color_code,
+                      display: 'flex', alignItems: 'center', padding: '0 12px', 
+                      boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.15)', cursor: 'pointer'
+                    }}
                     onClick={() => { setEditingLabel({ id: l.id, name: l.name, color_code: l.color_code }); setView('edit-label'); }}
-                    style={iconBtnStyle}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9fadbc" strokeWidth="2">
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => handleDeleteLabel(l.id)}
-                    style={iconBtnStyle}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(248,113,104,0.15)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f87168" strokeWidth="2">
-                      <polyline points="3 6 5 6 21 6"/>
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                    </svg>
-                  </button>
-                </div>
-              ))}
+                    >
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>
+                        {l.name}
+                      </span>
+                    </div>
+                    <button 
+                      onClick={() => { setEditingLabel({ id: l.id, name: l.name, color_code: l.color_code }); setView('edit-label'); }} 
+                      className="menu-icon-btn" title="Edit label"
+                    >
+                      <Pencil size={16} />
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteLabel(l.id)} 
+                      className="menu-icon-btn" title="Delete label"
+                      style={{ color: '#f87168' }}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
           {/* ── CREATE / EDIT LABEL ── */}
           {(view === 'create-label' || view === 'edit-label') && editingLabel && (
-            <div>
-              <div style={{
-                height: 56, background: editingLabel.color_code, borderRadius: 8,
-                marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              
+              <div style={{ 
+                height: 64, background: editingLabel.color_code, borderRadius: 8, 
+                display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.15)' 
               }}>
-                <span style={{ fontWeight: 700, fontSize: 15, color: 'white' }}>
+                <span style={{ fontWeight: 700, fontSize: 16, color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>
                   {editingLabel.name || 'Label preview'}
                 </span>
               </div>
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#9fadbc', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Name</div>
-                <input
-                  value={editingLabel.name}
-                  onChange={e => setEditingLabel({ ...editingLabel, name: e.target.value })}
-                  placeholder="Label name…"
-                  style={{
-                    width: '100%', padding: '8px 10px',
-                    background: '#22272b', borderRadius: 4,
-                    color: '#b6c2cf', border: '2px solid rgba(255,255,255,0.2)',
-                    outline: 'none', fontSize: 14, boxSizing: 'border-box',
-                  }}
-                  onFocus={e => e.currentTarget.style.borderColor = '#388bff'}
-                  onBlur={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'}
+
+              <div>
+                <span className="menu-section-title">Name</span>
+                <input 
+                  autoFocus value={editingLabel.name} 
+                  onChange={e => setEditingLabel({ ...editingLabel, name: e.target.value })} 
+                  placeholder="e.g. Frontend, Urgent..." 
+                  className="menu-input"
                 />
               </div>
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#9fadbc', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Select a color</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}>
-                  {labelColors.map(c => (
-                    <button
-                      key={c}
-                      onClick={() => setEditingLabel({ ...editingLabel, color_code: c })}
-                      style={{
-                        height: 36, borderRadius: 4, background: c, border: 'none', cursor: 'pointer',
-                        outline: editingLabel.color_code === c ? '3px solid white' : '3px solid transparent',
-                        transition: 'transform 0.1s, outline 0.1s',
+
+              <div>
+                <span className="menu-section-title">Select a color</span>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
+                  {LABEL_COLORS.map(c => (
+                    <button 
+                      key={c} 
+                      onClick={() => setEditingLabel({ ...editingLabel, color_code: c })} 
+                      style={{ 
+                        height: 40, borderRadius: 6, background: c, border: 'none', 
+                        cursor: 'pointer', outline: editingLabel.color_code === c ? '3px solid #579dff' : '3px solid transparent', 
+                        outlineOffset: 2, transition: 'outline 0.15s',
+                        boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.1)'
                       }}
-                      onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.08)'}
-                      onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
                     />
                   ))}
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  onClick={handleSaveLabel}
-                  style={{
-                    flex: 1, padding: '8px', borderRadius: 4, fontSize: 14, fontWeight: 600,
-                    background: '#0c66e4', color: 'white', border: 'none', cursor: 'pointer',
-                    transition: 'background 0.1s',
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#0055cc'}
-                  onMouseLeave={e => e.currentTarget.style.background = '#0c66e4'}
+
+              <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+                <button 
+                  onClick={handleSaveLabel} 
+                  disabled={isProcessing || !editingLabel.name.trim()}
+                  className="menu-btn-primary" style={{ flex: 1 }}
                 >
-                  {view === 'edit-label' ? 'Save' : 'Create'}
+                  {isProcessing ? 'Saving...' : (view === 'edit-label' ? 'Save Changes' : 'Create Label')}
                 </button>
-                <button
-                  onClick={() => { setView('labels'); setEditingLabel(null); }}
-                  style={{
-                    padding: '8px 16px', borderRadius: 4, fontSize: 14, fontWeight: 500,
-                    background: 'rgba(255,255,255,0.08)', color: '#b6c2cf',
-                    border: 'none', cursor: 'pointer', transition: 'background 0.1s',
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                <button 
+                  onClick={() => { setView('labels'); setEditingLabel(null); }} 
+                  className="menu-btn-secondary"
                 >
                   Cancel
                 </button>
@@ -474,62 +468,76 @@ export default function BoardMenu({ onClose }: Props) {
 
           {/* ── MEMBERS VIEW ── */}
           {view === 'members' && (
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#9fadbc', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Invite member
-              </div>
-              <div style={{ marginBottom: 16 }}>
-                <select
-                  value={inviteEmail}
-                  onChange={e => setInviteEmail(e.target.value)}
-                  style={selectStyle}
-                >
-                  <option value="">Select user…</option>
-                  {users?.map((u: any) => (
-                    <option key={u.id} value={u.email}>{u.name} ({u.email})</option>
-                  ))}
-                </select>
-                <select value={inviteRole} onChange={e => setInviteRole(e.target.value)} style={{ ...selectStyle, marginTop: 6 }}>
-                  <option value="viewer">Viewer</option>
-                  <option value="editor">Editor</option>
-                  <option value="owner">Owner</option>
-                </select>
-                <button
-                  onClick={handleInvite}
-                  style={{
-                    marginTop: 8, width: '100%', padding: '8px', borderRadius: 4, fontSize: 14, fontWeight: 600,
-                    background: '#0c66e4', color: 'white', border: 'none', cursor: 'pointer',
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#0055cc'}
-                  onMouseLeave={e => e.currentTarget.style.background = '#0c66e4'}
-                >
-                  Share
-                </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              
+              <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)' }}>
+                <span className="menu-section-title">Invite a member</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ position: 'relative' }}>
+                    <select value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} className="menu-select">
+                      <option value="">Select user to invite…</option>
+                      {users?.map((u: any) => (<option key={u.id} value={u.email}>{u.name} ({u.email})</option>))}
+                    </select>
+                    <ChevronDown size={16} style={{ position: 'absolute', right: 12, top: 12, color: '#8c9bab', pointerEvents: 'none' }} />
+                  </div>
+                  
+                  <div style={{ position: 'relative' }}>
+                    <select value={inviteRole} onChange={e => setInviteRole(e.target.value)} className="menu-select">
+                      <option value="viewer">Viewer (Read Only)</option>
+                      <option value="editor">Editor (Can Edit)</option>
+                      <option value="owner">Owner (Full Access)</option>
+                    </select>
+                    <ChevronDown size={16} style={{ position: 'absolute', right: 12, top: 12, color: '#8c9bab', pointerEvents: 'none' }} />
+                  </div>
+                  
+                  <button 
+                    onClick={handleInvite} 
+                    disabled={!inviteEmail || isProcessing} 
+                    className="menu-btn-primary"
+                  >
+                    {isProcessing ? 'Inviting...' : 'Share Board'}
+                  </button>
+                </div>
               </div>
 
-              <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', marginBottom: 12 }} />
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#9fadbc', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Board members
-              </div>
-              {boardState?.members?.map((m: any) => (
-                <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 4px', borderRadius: 6 }}>
-                  <div style={{
-                    width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
-                    background: '#0052cc',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 13, fontWeight: 700, color: 'white',
-                  }}>
-                    {m.name?.[0]?.toUpperCase() || '?'}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#b6c2cf' }}>{m.name}</div>
-                    <div style={{ fontSize: 11, color: '#9fadbc' }}>{m.email}</div>
-                  </div>
-                  <div style={{ marginLeft: 'auto', fontSize: 11, color: '#9fadbc', background: 'rgba(255,255,255,0.08)', padding: '2px 8px', borderRadius: 4 }}>
-                    {m.role}
-                  </div>
+              <div>
+                <span className="menu-section-title">Current Members</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {boardState?.memberships?.map((m: any) => (
+                    <div key={m.id} style={{ 
+                      display: 'flex', alignItems: 'center', gap: 12, padding: '10px', 
+                      borderRadius: 8, background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(255,255,255,0.05)'
+                    }}>
+                      <div style={{ 
+                        width: 36, height: 36, borderRadius: '50%', flexShrink: 0, 
+                        background: 'linear-gradient(135deg, #0c66e4, #579dff)', 
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                        fontSize: 14, fontWeight: 700, color: 'white',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                      }}>
+                        {m.name?.[0]?.toUpperCase() || '?'}
+                      </div>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: '#e5e9ea', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {m.name}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#8c9bab', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {m.email}
+                        </div>
+                      </div>
+                      <div style={{ 
+                        fontSize: 11, fontWeight: 600, color: '#9fadbc', 
+                        background: 'rgba(255,255,255,0.1)', padding: '4px 8px', 
+                        borderRadius: 4, textTransform: 'capitalize' 
+                      }}>
+                        {m.role}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+
             </div>
           )}
         </div>
@@ -537,43 +545,3 @@ export default function BoardMenu({ onClose }: Props) {
     </>
   );
 }
-
-function MenuRow({ icon, label, sub, onClick }: any) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 12,
-        width: '100%', padding: '10px 12px', borderRadius: 6,
-        fontSize: 14, color: '#b6c2cf',
-        background: 'transparent', border: 'none', cursor: 'pointer',
-        transition: 'background 0.1s', marginBottom: 2, textAlign: 'left',
-      }}
-      onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-    >
-      <span style={{ color: '#9fadbc', flexShrink: 0 }}>{icon}</span>
-      <div>
-        <div>{label}</div>
-        {sub && <div style={{ fontSize: 11, color: '#9fadbc', marginTop: 1 }}>{sub}</div>}
-      </div>
-      <svg style={{ marginLeft: 'auto', flexShrink: 0 }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9fadbc" strokeWidth="2">
-        <polyline points="9 18 15 12 9 6"/>
-      </svg>
-    </button>
-  );
-}
-
-const iconBtnStyle: React.CSSProperties = {
-  width: 32, height: 36, borderRadius: 6,
-  background: 'transparent', border: 'none', cursor: 'pointer',
-  display: 'flex', alignItems: 'center', justifyContent: 'center',
-  transition: 'background 0.1s',
-};
-
-const selectStyle: React.CSSProperties = {
-  width: '100%', padding: '8px 10px',
-  background: '#22272b', borderRadius: 6,
-  color: '#b6c2cf', border: '1px solid rgba(255,255,255,0.2)',
-  fontSize: 13, outline: 'none', boxSizing: 'border-box',
-};

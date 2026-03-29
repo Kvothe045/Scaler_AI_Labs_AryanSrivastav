@@ -1,7 +1,7 @@
 from typing import Optional, List
 from sqlmodel import Field, SQLModel, Relationship
 from datetime import datetime
-
+from pydantic import BaseModel
 # ==========================================
 # Link Tables (Many-to-Many)
 # ==========================================
@@ -34,6 +34,8 @@ class Board(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str
     background_color: str = Field(default="#0079bf")
+    background_image: Optional[str] = None
+    
     
     lists: List["ListModel"] = Relationship(back_populates="board", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     memberships: List["BoardMember"] = Relationship(sa_relationship_kwargs={"cascade": "all, delete-orphan"})
@@ -55,6 +57,8 @@ class Label(SQLModel, table=True):
     color_code: str
     
     cards: List["Card"] = Relationship(back_populates="labels", link_model=CardLabelLink)
+    
+
 
 class Card(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -108,3 +112,10 @@ class ActivityLog(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     card: Optional[Card] = Relationship(back_populates="activities")
     user: Optional[User] = Relationship()
+    
+    
+class UserCreate(BaseModel):
+    """Schema for validating incoming data when creating a user."""
+    email: str
+    name: str
+    avatar_url: Optional[str] = None

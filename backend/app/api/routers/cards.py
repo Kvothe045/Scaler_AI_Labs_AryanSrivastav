@@ -305,3 +305,52 @@ def get_attachments(
         }
         for att in attachments
     ]
+    
+@router.get("/{card_id}/comments", status_code=200)
+def get_comments(
+    card_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    card = session.get(Card, card_id)
+    if not card:
+        raise HTTPException(status_code=404)
+    _verify_card_access(session, current_user, card.list_id, ["owner", "editor", "viewer"])
+
+    statement = select(Comment).where(Comment.card_id == card_id).order_by(Comment.created_at.desc())
+    comments = session.exec(statement).all()
+    return [
+        {
+            "id": c.id,
+            "card_id": c.card_id,
+            "content": c.content,
+            "created_at": c.created_at,
+            "user_id": c.user_id,
+            "user_name": c.user.name if c.user else "Unknown",
+        }
+        for c in comments
+    ]
+
+@router.get("/{card_id}/activity", status_code=200)
+def get_activity(
+    card_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    card = session.get(Card, card_id)
+    if not card:
+        raise HTTPException(status_code=404)
+    _verify_card_access(session, current_user, card.list_id, ["owner", "editor", "viewer"])
+
+    statement = select(ActivityLog).where(ActivityLog.card_id == card_id).order_by(ActivityLog.created_at.desc())
+    logs = session.exec(statement).all()
+    return [
+        {
+            "id": l.id,
+            "action": l.action,
+            "created_at": l.created_at,
+            "user_id": l.user_id,
+            "user_name": l.user.name if l.user else "Unknown",
+        }
+        for l in logs
+    ]

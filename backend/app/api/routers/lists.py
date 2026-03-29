@@ -17,6 +17,7 @@ class ListCreate(BaseModel):
 class ListUpdate(BaseModel):
     title: Optional[str] = None
     position: Optional[float] = None
+    color: Optional[str] = None
 
 @router.post("/", response_model=ListModel, status_code=status.HTTP_201_CREATED)
 def create_list(
@@ -48,6 +49,7 @@ def update_list(
         
     if payload.title is not None: db_list.title = payload.title
     if payload.position is not None: db_list.position = payload.position
+    if payload.color is not None: db_list.color = payload.color
         
     session.add(db_list)
     session.commit()

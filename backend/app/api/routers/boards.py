@@ -1,3 +1,5 @@
+# backend/app/api/routers/boards.py
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlmodel import Session, select
 from pydantic import BaseModel
@@ -21,6 +23,7 @@ class BoardCreate(BaseModel):
 class BoardUpdate(BaseModel):
     title: Optional[str] = None
     background_color: Optional[str] = None
+    background_image: Optional[str] = None # <-- ADD THIS!
 
 class BoardMemberCreate(BaseModel):
     user_id: int
@@ -77,6 +80,8 @@ def update_board(
         board.title = payload.title
     if payload.background_color is not None: 
         board.background_color = payload.background_color
+    if payload.background_image is not None:  # <-- ADD THIS LOGIC
+        board.background_image = payload.background_image
         
     session.add(board)
     session.commit()
@@ -93,7 +98,7 @@ def get_board_state(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    """Hydrates the frontend. Checks access and returns the user's role."""
+    """Hydrates the frontend. Checks access, returns lists, cards, and members."""
     # Security Gate
     membership = verify_board_access(session, current_user.id, board_id, ["owner", "editor", "viewer"])
 
@@ -104,11 +109,9 @@ def get_board_state(
     statement = select(ListModel).where(ListModel.board_id == board_id).order_by(ListModel.position)
     lists = session.exec(statement).all()
 
-    # CRITICAL FIX: Deep Serialization Array
+    # 1. Deep Serialization of Lists & Cards
     serialized_lists = []
-
     for lst in lists:
-        # 1. ADD FILTER: Do not load archived cards on the main board view
         card_stmt = select(Card).where(Card.list_id == lst.id, Card.is_archived == False)
         
         if search: card_stmt = card_stmt.where(Card.title.ilike(f"%{search}%"))
@@ -121,7 +124,6 @@ def get_board_state(
         if member_id:
             filtered_cards = [c for c in filtered_cards if any(m.id == member_id for m in c.members)]
             
-        # 2. MANUAL DICT CONVERSION
         lst_dict = lst.model_dump()
         lst_dict["cards"] = [
             {
@@ -134,8 +136,25 @@ def get_board_state(
         ]
         serialized_lists.append(lst_dict)
 
+    # 2. Fetch Board Members and User Details
+    member_stmt = select(BoardMember, User).join(User, BoardMember.user_id == User.id).where(BoardMember.board_id == board_id)
+    members_data = session.exec(member_stmt).all()
+    
+    serialized_members = []
+    for bm_link, user_obj in members_data:
+        serialized_members.append({
+            "id": user_obj.id,
+            "user_id": user_obj.id,
+            "name": user_obj.name,
+            "email": user_obj.email,
+            "avatar_url": user_obj.avatar_url,
+            "role": bm_link.role
+        })
+
+    # 3. Assemble Final Payload
     board_dict = board.model_dump()
-    board_dict["lists"] = serialized_lists # Assign the manually serialized dictionaries
+    board_dict["lists"] = serialized_lists 
+    board_dict["memberships"] = serialized_members 
     board_dict["my_role"] = membership.role 
     
     return board_dict
@@ -170,3 +189,22 @@ def add_board_member(
         
     session.commit()
     return {"message": f"User added to board as {payload.role}"}
+
+@router.delete("/{board_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_board(
+    board_id: int, 
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Deletes a board and all its associated data (lists, cards, members, etc). 
+    Requires Owner permissions.
+    """
+    verify_board_access(session, current_user.id, board_id, ["owner"])
+    
+    board = session.get(Board, board_id)
+    if not board:
+        raise HTTPException(status_code=404, detail="Board not found")
+    
+    session.delete(board)
+    session.commit()

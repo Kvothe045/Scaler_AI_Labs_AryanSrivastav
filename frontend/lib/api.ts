@@ -1,38 +1,71 @@
 // frontend/lib/api.ts
+import { useStore } from '../store';
 
-/**
- * Hardcoded Environment Check to prevent Vercel Env Var overriding.
- * - SERVER: Uses the absolute VM URL with the port.
- * - CLIENT: Strictly uses relative path '' to trigger the Vercel Proxy.
- */
-const BASE = 'https://scalarapi.duckdns.org:8443';
+const BASE = 'http://localhost:8123';
 
-async function req(method: string, path: string, body?: any) {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  
-  try {
-    const res = await fetch(`${BASE}${path}`, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-    });
+function getCurrentUserEmail(): string {
+  if (typeof window === 'undefined') return '';
+  return localStorage.getItem('currentUserEmail') || '';
+}
 
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error(err || res.statusText);
-    }
-    
-    const text = await res.text();
-    return text ? JSON.parse(text) : null;
-    
-  } catch (error) {
-    console.error(`[API Client] ${method} ${path} failed:`, error);
-    throw error;
+/** Thrown when the backend returns a non-2xx response */
+export class ApiError extends Error {
+  status: number;
+  detail: string;
+  isPermissionError: boolean;
+
+  constructor(status: number, detail: string) {
+    super(detail);
+    this.name = 'ApiError';
+    this.status = status;
+    this.detail = detail;
+    this.isPermissionError = status === 403;
   }
 }
+
+async function req(method: string, path: string, body?: any) {
+  const token     = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const userEmail = getCurrentUserEmail();
+
+  const safePath = path.startsWith('/') ? path : `/${path}`;
+  const url      = `${BASE}${safePath}`;
+
+  const res = await fetch(url, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(userEmail ? { 'x-user-email': userEmail } : {}),
+      ...(token     ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+  });
+
+  if (!res.ok) {
+    const raw = await res.text();
+    let detail = raw || res.statusText;
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed?.detail) detail = parsed.detail;
+    } catch (_) { /* raw was plain text */ }
+
+    const err = new ApiError(res.status, detail);
+
+    // ── Intercept 403s here, at the lowest level, so EVERY caller gets the toast
+    //    useStore.getState() works outside React — no hook rules violated
+    if (err.isPermissionError) {
+      useStore.getState().setPermissionError(detail);
+    }
+
+    throw err;
+  }
+
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+// ── Users ─────────────────────────────────────────────
+export const getUsers   = ()          => req('GET',  '/api/v1/users/');
+export const createUser = (data: any) => req('POST', '/api/v1/users/', data);
 
 // ── Auth ──────────────────────────────────────────────
 export const login    = (data: any) => req('POST', '/api/v1/auth/login', data);
@@ -42,9 +75,24 @@ export const getMe    = ()          => req('GET',  '/api/v1/auth/me');
 // ── Boards ────────────────────────────────────────────
 export const getBoards      = ()                           => req('GET',   '/api/v1/boards/');
 export const createBoard    = (data: any)                  => req('POST',  '/api/v1/boards/', data);
-export const getBoard       = (id: number)                 => req('GET',   `/api/v1/boards/${id}`);
 export const updateBoard    = (id: number, data: any)      => req('PATCH', `/api/v1/boards/${id}`, data);
 export const addBoardMember = (boardId: number, data: any) => req('POST',  `/api/v1/boards/${boardId}/members`, data);
+export const deleteBoard    = (id: number)                 => req('DELETE', `/api/v1/boards/${id}`);
+
+export const getBoard = (id: number, filters?: any) => {
+  const params = new URLSearchParams();
+  if (filters) {
+    if (filters.label_ids?.length > 0) {
+      filters.label_ids.forEach((labelId: number) => params.append('label_id', labelId.toString()));
+    } else if (filters.label_id) {
+      params.append('label_id', filters.label_id.toString());
+    }
+    if (filters.member_id) params.append('member_id', filters.member_id.toString());
+    if (filters.due_date)  params.append('due_date',  filters.due_date);
+  }
+  const qs = params.toString();
+  return req('GET', `/api/v1/boards/${id}${qs ? `?${qs}` : ''}`);
+};
 
 // ── Lists ─────────────────────────────────────────────
 export const createList = (data: any)             => req('POST',   '/api/v1/lists/', data);
@@ -71,54 +119,50 @@ export const createLabel         = (data: any)                 => req('POST',   
 export const updateLabel         = (id: number, data: any)     => req('PATCH',  `/api/v1/labels/${id}`, data);
 export const deleteLabel         = (id: number)                => req('DELETE', `/api/v1/labels/${id}`);
 
-export const addLabelToCard      = (cardId: number, labelId: number) =>
-  req('POST',   `/api/v1/cards/${cardId}/labels/${labelId}`);
-export const removeLabelFromCard = (cardId: number, labelId: number) =>
-  req('DELETE', `/api/v1/cards/${cardId}/labels/${labelId}`);
+export const addLabelToCard      = (cardId: number, labelId: number) => req('POST',   `/api/v1/cards/${cardId}/labels/${labelId}`);
+export const removeLabelFromCard = (cardId: number, labelId: number) => req('DELETE', `/api/v1/cards/${cardId}/labels/${labelId}`);
 
 // ── Members ───────────────────────────────────────────
-export const getUsers     = () => req('GET', '/api/v1/users/');
-
-export const assignMember = (cardId: number, userId: number) =>
-  req('POST',   `/api/v1/cards/${cardId}/members/${userId}`);
-export const removeMember = (cardId: number, userId: number) =>
-  req('DELETE', `/api/v1/cards/${cardId}/members/${userId}`);
+export const assignMember = (cardId: number, userId: number) => req('POST',   `/api/v1/cards/${cardId}/members/${userId}`);
+export const removeMember = (cardId: number, userId: number) => req('DELETE', `/api/v1/cards/${cardId}/members/${userId}`);
 
 // ── Checklists ────────────────────────────────────────
-export const addChecklistItem    = (cardId: number, data: any)                  =>
-  req('POST',   `/api/v1/cards/${cardId}/checklists`, data);
-export const toggleChecklistItem = (cardId: number, itemId: number, data: any) =>
-  req('PATCH',  `/api/v1/cards/${cardId}/checklists/${itemId}`, data);
-export const deleteChecklistItem = (cardId: number, itemId: number)             =>
-  req('DELETE', `/api/v1/cards/${cardId}/checklists/${itemId}`);
+export const addChecklistItem    = (cardId: number, data: any)                  => req('POST',   `/api/v1/cards/${cardId}/checklists`, data);
+export const toggleChecklistItem = (cardId: number, itemId: number, data: any) => req('PATCH',  `/api/v1/cards/${cardId}/checklists/${itemId}`, data);
+export const deleteChecklistItem = (cardId: number, itemId: number)             => req('DELETE', `/api/v1/cards/${cardId}/checklists/${itemId}`);
 
-// ── Comments ──────────────────────────────────────────
-export const addComment = (cardId: number, data: any) =>
-  req('POST', `/api/v1/cards/${cardId}/comments`, data);
+// ── Comments & Activity ───────────────────────────────
+export const addComment  = (cardId: number, data: any) => req('POST', `/api/v1/cards/${cardId}/comments`, data);
+export const getComments = (cardId: number)            => req('GET',  `/api/v1/cards/${cardId}/comments`);
+export const getActivity = (cardId: number)            => req('GET',  `/api/v1/cards/${cardId}/activity`);
 
 // ── Attachments ───────────────────────────────────────
-export const getAttachments = (cardId: number) =>
-  req('GET', `/api/v1/cards/${cardId}/attachments`);
+export const getAttachments = (cardId: number) => req('GET', `/api/v1/cards/${cardId}/attachments`);
 
 export const uploadAttachment = async (cardId: number, file: File) => {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  const form = new FormData();
+  const token     = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const userEmail = getCurrentUserEmail();
+  const form      = new FormData();
   form.append('file', file);
-  
-  try {
-    const res = await fetch(`${BASE}/api/v1/cards/${cardId}/attachments`, {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: form,
-    });
-    
-    if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(errText || `Upload Failed: ${res.status}`);
+
+  const res = await fetch(`${BASE}/api/v1/cards/${cardId}/attachments`, {
+    method: 'POST',
+    headers: {
+      ...(userEmail ? { 'x-user-email': userEmail } : {}),
+      ...(token     ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: form,
+  });
+
+  if (!res.ok) {
+    const raw = await res.text();
+    let detail = raw || `Upload Failed: ${res.status}`;
+    try { const p = JSON.parse(raw); if (p?.detail) detail = p.detail; } catch (_) {}
+    const err = new ApiError(res.status, detail);
+    if (err.isPermissionError) {
+      useStore.getState().setPermissionError(detail);
     }
-    return await res.json();
-  } catch (error) {
-    console.error(`[API Client] Attachment upload failed:`, error);
-    throw error;
+    throw err;
   }
+  return res.json();
 };
