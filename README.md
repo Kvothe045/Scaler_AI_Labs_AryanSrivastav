@@ -106,7 +106,8 @@ This project is a full-stack clone of Trello built as part of Scaler AI Labs. It
 | Frontend Styling | Tailwind CSS |
 | State Management | Zustand |
 | Drag & Drop | (custom or dnd-kit) |
-| Backend Framework | FastAPI (Python 3.11+) |
+| Backend Framework | FastAPI (Python 3.12+) |
+| Backend Hosting | Azure VM |
 | ORM | SQLModel (built on SQLAlchemy + Pydantic) |
 | Database | SQLite (dev) / PostgreSQL (prod) |
 | Auth | JWT Bearer tokens + email header (`x-user-email`) |
