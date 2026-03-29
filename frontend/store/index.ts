@@ -10,7 +10,6 @@ export interface Filters {
 }
 
 interface StoreState {
-  // ── Auth ────────────────────────────────────────────
   token: string | null;
   currentUserEmail: string | null;
   currentUser: any | null;
@@ -18,36 +17,31 @@ interface StoreState {
   setToken: (token: string | null) => void;
   setCurrentUser: (email: string) => void;
 
-  // ── Permission toast ────────────────────────────────
   permissionError: string | null;
   setPermissionError: (msg: string | null) => void;
 
-  // ── Boards list ─────────────────────────────────────
   boards: any[];
   fetchBoards: () => Promise<void>;
   createBoard: (title: string, color: string) => Promise<any>;
+  ensureUserHasBoard: () => Promise<number | null>;
 
-  // ── Active board & Filtering ────────────────────────
   activeBoardId: number | null;
   boardState: any | null;
   filters: Filters;
   setFilters: (filters: Filters) => void;
   setBoardId: (id: number | null) => void;
   setActiveBoardId: (id: number | null) => void;
-  // onAccessDenied now receives the user's own board id (or null) so the
-  // page can route directly to it instead of just going to "/"
-  fetchBoardState: (id: number, onAccessDenied?: (ownedBoardId: number | null) => void) => Promise<void>;
+  fetchBoardState: (
+    id: number,
+    onAccessDenied?: (ownedBoardId: number | null) => void
+  ) => Promise<void>;
   refreshBoard: () => Promise<void>;
 
-  // ── Labels & Users ──────────────────────────────────
   labels: any[];
   users: any[];
   fetchLabels: () => Promise<void>;
   fetchUsers: () => Promise<void>;
   createUser: (data: { name: string; email: string; avatar_url?: string }) => Promise<any>;
-
-  // ── Board access guard ──────────────────────────────
-  ensureUserHasBoard: () => Promise<number | null>;
 }
 
 function deriveRole(boardState: any, email: string | null): string | null {
@@ -59,14 +53,19 @@ function deriveRole(boardState: any, email: string | null): string | null {
   return match?.role ?? null;
 }
 
+// Catches every possible "you can't be here" signal from the API or from our
+// own synthetic throw below. Intentionally broad so nothing slips through.
 function isAccessError(err: unknown): boolean {
   if (!(err instanceof ApiError)) return false;
+  if (err.status === 403 || err.status === 404 || err.status === 401) return true;
+  const d = err.detail.toLowerCase();
   return (
-    err.status === 403 ||
-    err.status === 404 ||
-    err.detail.toLowerCase().includes('do not have access') ||
-    err.detail.toLowerCase().includes('not a member') ||
-    err.detail.toLowerCase().includes('forbidden')
+    d.includes('do not have access') ||
+    d.includes('not a member')       ||
+    d.includes('not member')         ||
+    d.includes('forbidden')          ||
+    d.includes('unauthorized')       ||
+    d.includes('permission')
   );
 }
 
@@ -142,10 +141,6 @@ export const useStore = create<StoreState>((set, get) => ({
   },
 
   // ── Board access guard ────────────────────────────────────────────────────
-  /**
-   * Fetches the current user's boards; creates a default one if empty.
-   * Never throws — always resolves with a board id or null.
-   */
   ensureUserHasBoard: async () => {
     try {
       const boards: any[] = await api.getBoards();
@@ -153,7 +148,6 @@ export const useStore = create<StoreState>((set, get) => ({
         set({ boards });
         return boards[0].id as number;
       }
-      // User has no boards at all — create a safe default
       const newBoard = await api.createBoard({
         title: 'My Board',
         background_color: '#0052cc',
@@ -166,7 +160,7 @@ export const useStore = create<StoreState>((set, get) => ({
     }
   },
 
-  // ── Active board & Filtering ──────────────────────────────────────────────
+  // ── Active board ──────────────────────────────────────────────────────────
   activeBoardId: null,
   boardState: null,
   filters: {},
@@ -186,28 +180,15 @@ export const useStore = create<StoreState>((set, get) => ({
     if (id) get().fetchBoardState(id);
   },
 
-  /**
-   * Fetches board state for `id`.
-   *
-   * Happy path  → updates store normally.
-   *
-   * Access denied (403 / 404 / no role in memberships):
-   *   1. Clears broken state so the spinner doesn't hang
-   *   2. Awaits ensureUserHasBoard() — creates a board if needed
-   *   3. Calls onAccessDenied(ownedBoardId) so the page can navigate
-   *      directly to /board/<ownedBoardId> (or "/" if id is null)
-   *
-   * Critically this is all awaited BEFORE the page's finally{} block runs,
-   * so setIsLoading(false) fires only after the redirect is already queued.
-   */
   fetchBoardState: async (id, onAccessDenied) => {
     try {
       const boardState = await api.getBoard(id, get().filters);
       const role = deriveRole(boardState, get().currentUserEmail);
 
-      // Board loaded but user has zero membership rows → treat as access denied
       if (!role) {
-        throw new ApiError(403, "You are not a member of this board.");
+        // Board returned 200 but user has no membership row → access denied.
+        // Use status 403 AND a detail string that isAccessError() will catch.
+        throw new ApiError(403, 'forbidden: not a member of this board');
       }
 
       set({ boardState, activeBoardId: id, currentUserRole: role });
@@ -215,15 +196,22 @@ export const useStore = create<StoreState>((set, get) => ({
       console.error('fetchBoardState error:', e);
 
       if (isAccessError(e)) {
-        // Wipe stale state immediately — stops spinner rendering stale board
+        // Clear stale state so the page doesn't render a broken board
         set({ boardState: null, activeBoardId: null, currentUserRole: null });
 
         if (onAccessDenied) {
-          // Await so navigation happens with a real destination, not a blind "/"
+          // Await so we have a concrete board id before navigating
           const ownedBoardId = await get().ensureUserHasBoard();
           onAccessDenied(ownedBoardId);
         }
+        // Do NOT re-throw — the error is fully handled; letting it bubble
+        // would cause the page's catch block to run and potentially fight
+        // with the redirect.
+        return;
       }
+
+      // Non-access error (network failure etc.) — re-throw so callers know
+      throw e;
     }
   },
 

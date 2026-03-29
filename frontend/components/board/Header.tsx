@@ -1,9 +1,9 @@
-// frontend/components/board/Header.tsx
 'use client';
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useStore, Filters } from '../../store';
 import SearchResults from './SearchResults';
+import CardModal from '../card/CardModal';
 import * as api from '../../lib/api';
 import type { Card, List } from '../../types';
 
@@ -36,6 +36,9 @@ export default function Header({ onMenuClick, onSwitcherClick, onSidebarToggle }
   const [editTitle,     setEditTitle]     = useState(false);
   const [titleVal,      setTitleVal]      = useState('');
   const [mobileSearch,  setMobileSearch]  = useState(false);
+
+  // ── Card selected from search results — rendered at top level ──────────
+  const [searchCard, setSearchCard] = useState<{ card: Card; list: List } | null>(null);
 
   // Create-user modal state
   const [showCreateUser, setShowCreateUser] = useState(false);
@@ -102,6 +105,25 @@ export default function Header({ onMenuClick, onSwitcherClick, onSidebarToggle }
     } finally {
       setCreating(false);
     }
+  };
+
+  // ── Shared helpers for closing search ─────────────────────────────────
+  const closeDesktopSearch = () => {
+    setShowSearch(false);
+    setSearch('');
+    setSearchResults([]);
+  };
+  const closeMobileSearch = () => {
+    setMobileSearch(false);
+    setSearch('');
+    setSearchResults([]);
+  };
+
+  // ── Card selected from search: close search, open modal at top level ──
+  const handleCardSelect = (card: Card, list: List) => {
+    closeDesktopSearch();
+    closeMobileSearch();
+    setSearchCard({ card, list });
   };
 
   useEffect(() => {
@@ -219,6 +241,16 @@ export default function Header({ onMenuClick, onSwitcherClick, onSidebarToggle }
         }
       `}</style>
 
+      {/* ── CardModal opened from search — rendered here, OUTSIDE the header
+           so it has a clean stacking context and appears fully in front ── */}
+      {searchCard && (
+        <CardModal
+          card={searchCard.card}
+          list={searchCard.list}
+          onClose={() => setSearchCard(null)}
+        />
+      )}
+
       {/* Mobile search fullscreen */}
       <div className={`hdr-msearch${mobileSearch ? ' open' : ''}`}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -242,13 +274,18 @@ export default function Header({ onMenuClick, onSwitcherClick, onSidebarToggle }
             )}
           </div>
           <button
-            onClick={() => { setMobileSearch(false); setSearch(''); setSearchResults([]); }}
+            onClick={closeMobileSearch}
             style={{ color: 'rgba(255,255,255,0.75)', background: 'none', border: 'none', fontSize: 15, cursor: 'pointer', fontWeight: 500, flexShrink: 0 }}
           >Cancel</button>
         </div>
         {search.length >= 2 ? (
           <div style={{ flex: 1, overflowY: 'auto' }}>
-            <SearchResults results={searchResults} query={search} onClose={() => { setMobileSearch(false); setSearch(''); setSearchResults([]); }}/>
+            <SearchResults
+              results={searchResults}
+              query={search}
+              onClose={closeMobileSearch}
+              onCardSelect={handleCardSelect}
+            />
           </div>
         ) : (
           <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: 14, textAlign: 'center', paddingTop: 48 }}>
@@ -360,7 +397,12 @@ export default function Header({ onMenuClick, onSwitcherClick, onSidebarToggle }
             )}
           </div>
           {showSearch && (
-            <SearchResults results={searchResults} query={search} onClose={() => { setShowSearch(false); setSearch(''); setSearchResults([]); }}/>
+            <SearchResults
+              results={searchResults}
+              query={search}
+              onClose={closeDesktopSearch}
+              onCardSelect={handleCardSelect}
+            />
           )}
         </div>
 
@@ -456,12 +498,10 @@ export default function Header({ onMenuClick, onSwitcherClick, onSidebarToggle }
                 )}
               </div>
 
-              {/* Section header */}
               <div style={{ fontSize: 10, fontWeight: 700, color: '#8a9bb0', textTransform: 'uppercase', letterSpacing: '0.07em', padding: '4px 8px 6px' }}>
                 Switch account
               </div>
 
-              {/* All users list */}
               <div style={{ maxHeight: 220, overflowY: 'auto' }}>
                 {users.map((u: any) => {
                   const uColor = getAvatarColor(u.name || '');
@@ -500,7 +540,6 @@ export default function Header({ onMenuClick, onSwitcherClick, onSidebarToggle }
                 })}
               </div>
 
-              {/* Create user */}
               <div className="hdr-create-user">
                 <button
                   onClick={() => setShowCreateUser(true)}
@@ -544,24 +583,11 @@ export default function Header({ onMenuClick, onSwitcherClick, onSidebarToggle }
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '0 4px' }}>
                 <div>
                   <label style={{ fontSize: 11, color: '#8a9bb0', fontWeight: 600, display: 'block', marginBottom: 4 }}>Full name</label>
-                  <input
-                    className="hdr-user-input"
-                    placeholder="Jane Smith"
-                    value={newUserName}
-                    onChange={e => setNewUserName(e.target.value)}
-                    autoFocus
-                  />
+                  <input className="hdr-user-input" placeholder="Jane Smith" value={newUserName} onChange={e => setNewUserName(e.target.value)} autoFocus />
                 </div>
                 <div>
                   <label style={{ fontSize: 11, color: '#8a9bb0', fontWeight: 600, display: 'block', marginBottom: 4 }}>Email</label>
-                  <input
-                    className="hdr-user-input"
-                    placeholder="jane@example.com"
-                    type="email"
-                    value={newUserEmail}
-                    onChange={e => setNewUserEmail(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') handleCreateUser(); }}
-                  />
+                  <input className="hdr-user-input" placeholder="jane@example.com" type="email" value={newUserEmail} onChange={e => setNewUserEmail(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleCreateUser(); }} />
                 </div>
                 {createError && (
                   <div style={{ fontSize: 12, color: '#f87168', background: 'rgba(248,113,104,0.1)', padding: '6px 8px', borderRadius: 6 }}>
@@ -569,8 +595,7 @@ export default function Header({ onMenuClick, onSwitcherClick, onSidebarToggle }
                   </div>
                 )}
                 <button
-                  onClick={handleCreateUser}
-                  disabled={creating}
+                  onClick={handleCreateUser} disabled={creating}
                   style={{
                     padding: '8px 0', borderRadius: 8, border: 'none', cursor: creating ? 'not-allowed' : 'pointer',
                     background: creating ? 'rgba(87,157,255,0.3)' : '#0c66e4',

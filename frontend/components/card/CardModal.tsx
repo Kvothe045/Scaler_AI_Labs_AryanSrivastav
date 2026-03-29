@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { Card, List, ChecklistItem } from '../../types';
 import { useStore } from '../../store';
 import * as api from '../../lib/api';
+import { BASE as API_BASE } from '@/lib/api'
 
 interface Props {
   card: Card;
@@ -159,7 +160,6 @@ export default function CardModal({ card: initialCard, list, onClose }: Props) {
   const checklists    = card.checklists || [];
   const doneCount     = checklists.filter((c: any) => c.is_completed).length;
   const checkProgress = checklists.length > 0 ? Math.round((doneCount / checklists.length) * 100) : 0;
-  const API_BASE      = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8123';
   const coverColors   = ['#0052cc','#00875a','#ff5630','#ff991f','#6554c0','#00b8d9','#403294','#e6225e','#172b4d','#344563'];
 
   const closeSidebar = () => {

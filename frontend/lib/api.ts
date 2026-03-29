@@ -1,7 +1,7 @@
 // frontend/lib/api.ts
 import { useStore } from '../store';
 
-const BASE = 'https://scalarapi.duckdns.org:8443';
+export const BASE = 'https://scalarapi.duckdns.org:8443';
 
 function getCurrentUserEmail(): string {
   if (typeof window === 'undefined') return '';

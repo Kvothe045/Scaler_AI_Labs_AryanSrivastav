@@ -35,22 +35,16 @@ export default function BoardPage() {
   const [isSidebarOpen,  setIsSidebarOpen]  = useState(false);
   const [selectedCard,   setSelectedCard]   = useState<{ card: Card; list: List } | null>(null);
 
-  // Prevent the access-denied handler from firing more than once per mount
-  // (fetchBoardState could theoretically be called twice in StrictMode)
-  const redirectedRef = useRef(false);
+  // Tracks whether we already triggered a redirect for this mount so we
+  // never double-navigate (React StrictMode double-invokes effects).
+  const didRedirect = useRef(false);
 
-  /**
-   * Called by the store when the current user has no access to this board.
-   * ownedBoardId is the id of a board the user CAN access (created if needed),
-   * or null if something went wrong — in which case fall back to "/".
-   *
-   * We set isLoading=false here so the spinner stops BEFORE Next.js processes
-   * the navigation — avoids a flash of the stuck loading screen.
-   */
   const handleAccessDenied = useCallback((ownedBoardId: number | null) => {
-    if (redirectedRef.current) return;
-    redirectedRef.current = true;
+    if (didRedirect.current) return;
+    didRedirect.current = true;
 
+    // Drop the spinner NOW — before the navigation resolves — so the user
+    // never sees the stuck loading screen.
     setIsLoading(false);
 
     if (ownedBoardId) {
@@ -63,37 +57,38 @@ export default function BoardPage() {
   useEffect(() => {
     if (!boardId) return;
 
-    redirectedRef.current = false; // reset on boardId change
+    didRedirect.current = false;
     let mounted = true;
 
-    const loadBoardData = async () => {
+    const load = async () => {
       setIsLoading(true);
       setBoardId(boardId);
 
-      try {
-        // fetchBoardState is first and NOT inside Promise.all because on access
-        // denial it must fully resolve (including ensureUserHasBoard + the
-        // handleAccessDenied call) before we hit finally and set isLoading=false.
-        // If we wrapped it in Promise.all the other calls would race and the
-        // finally would run before the redirect callback fires.
-        await fetchBoardState(boardId, handleAccessDenied);
+      // ─── Step 1: fetch the board ───────────────────────────────────────────
+      // Run alone (NOT in Promise.all) so that if access is denied the store
+      // can fully resolve ensureUserHasBoard() and call handleAccessDenied()
+      // before we ever reach the secondary fetches or the finally block.
+      // fetchBoardState never throws on access errors — it handles them internally
+      // and calls onAccessDenied, then returns normally.
+      await fetchBoardState(boardId, handleAccessDenied);
 
-        // Only fetch the rest if we're still on this board (not being redirected)
-        if (mounted && !redirectedRef.current) {
-          await Promise.all([fetchUsers(), fetchBoards(), fetchLabels()]);
-        }
-      } catch (err) {
-        console.error('Failed to load board data:', err);
-      } finally {
-        // Only drop the spinner if we're not mid-redirect (handleAccessDenied
-        // already called setIsLoading(false) in that case)
-        if (mounted && !redirectedRef.current) {
-          setIsLoading(false);
-        }
-      }
+      // ─── Step 2: if we were redirected, stop here ──────────────────────────
+      // didRedirect.current is set synchronously inside handleAccessDenied so
+      // this check is reliable even though fetchBoardState is async.
+      if (!mounted || didRedirect.current) return;
+
+      // ─── Step 3: load supporting data ─────────────────────────────────────
+      await Promise.all([fetchUsers(), fetchBoards(), fetchLabels()]);
+
+      if (mounted) setIsLoading(false);
     };
 
-    loadBoardData();
+    load().catch((err) => {
+      // Only truly unexpected errors reach here (fetchBoardState swallows
+      // access errors and returns cleanly).
+      console.error('Unexpected load error:', err);
+      if (mounted && !didRedirect.current) setIsLoading(false);
+    });
 
     return () => { mounted = false; };
   }, [boardId, fetchBoardState, fetchUsers, fetchBoards, fetchLabels, setBoardId, handleAccessDenied]);
@@ -154,9 +149,9 @@ export default function BoardPage() {
             width: 85vw !important;
             max-width: 320px;
           }
-          .board-sidebar.open { transform: translateX(0); }
+          .board-sidebar.open  { transform: translateX(0); }
           .sidebar-backdrop.open { display: block; opacity: 1; }
-          .board-columns-area { padding-bottom: 60px; }
+          .board-columns-area  { padding-bottom: 60px; }
         }
       `}</style>
 
@@ -164,19 +159,16 @@ export default function BoardPage() {
         display: 'flex', height: '100svh', width: '100vw',
         overflow: 'hidden', background: '#1d2125',
       }}>
-        {/* Mobile sidebar backdrop */}
         <div
           className={`sidebar-backdrop ${isSidebarOpen ? 'open' : ''}`}
           onClick={() => setIsSidebarOpen(false)}
           aria-hidden="true"
         />
 
-        {/* Left sidebar */}
         <aside className={`board-sidebar ${isSidebarOpen ? 'open' : ''}`}>
           <Sidebar onClose={() => setIsSidebarOpen(false)} />
         </aside>
 
-        {/* Main board area */}
         <main style={{
           display: 'flex', flexDirection: 'column', flex: 1,
           overflow: 'hidden', position: 'relative', ...bgStyle,
@@ -200,7 +192,6 @@ export default function BoardPage() {
           <NavbarBottom onSwitchBoardsClick={() => setIsSwitcherOpen(true)} />
         </div>
 
-        {/* Overlays & Modals */}
         {isMenuOpen     && <BoardMenu     onClose={() => setIsMenuOpen(false)}     />}
         {isSwitcherOpen && <BoardSwitcher onClose={() => setIsSwitcherOpen(false)} />}
         {selectedCard   && (
