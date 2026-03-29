@@ -2,9 +2,25 @@
 
 > A feature-complete Trello-inspired project management board built with **FastAPI** (Python) on the backend and **Next.js 14** (TypeScript) on the frontend, deployed via Docker + DuckDNS + Caddy HTTPS.
 
-**Live Frontend:** [scalartrello.vercel.app](https://scalartrello.vercel.app)
-**Backend API:** `https://scalarapi.duckdns.org:8443`
-**API DOCS:** `https://scalarapi.duckdns.org:8443/docs`
+## 🌐 Live Links
+
+### 🚀 Frontend
+🔗 **Live App:**  
+[https://scalartrello.vercel.app]
+
+---
+
+### ⚙️ Backend
+🔗 **API Base URL:**  
+[https://scalarapi.duckdns.org:8443]
+
+📄 **Swagger Docs:**  
+[https://scalarapi.duckdns.org:8443/docs]
+
+📘 **ReDoc Documentation:**  
+[https://scalarapi.duckdns.org:8443/redoc]
+
+---
 
 ---
 
